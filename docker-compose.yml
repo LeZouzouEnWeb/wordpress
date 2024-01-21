@@ -1,22 +1,23 @@
 version: "3.8"
-# Defines which compose version to use
+
 services:
-  # Services line define which Docker images to run. In this case, it will be MySQL server and WordPress image.
   mariadb:
+    container_name: mariadb
     image: mariadb:latest
+    tty: true
     volumes:
-      - ${PWD}/db_data:/var/lib/mysql
+      - ./db_data/mysql:/var/lib/mysql
     ports:
       - "3306:3306"
     restart: always
     env_file:
       - ${PWD}/.env/mariadb.env
-      # Previous four lines define the main variables needed for the MySQL container to work: database, database username, database user password, and the MySQL root password.
-    networks:
-      - wpsite
 
-  # phpmyadmin
   phpmyadmin:
+    container_name: phpadmin
+    tty: true
+    links:
+      - mariadb
     depends_on:
       - mariadb
     image: phpmyadmin/phpmyadmin
@@ -24,29 +25,39 @@ services:
     ports:
       - "8080:80"
     env_file:
+      - ${PWD}/.env/mariadb.env
       - ${PWD}/.env/phpadmin.env
-    networks:
-      - wpsite
+
+  maildev:
+    container_name: maildev
+    image: maildev/maildev
+    tty: true
+    restart: always
+    env_file:
+      - ${PWD}/.env/maildev.env
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
 
   wordpress:
+    container_name: wordpress
     depends_on:
       - mariadb
-    image: wordpress:latest
+    image: wordpress:6.4.2-php8.1-apache
     restart: always
-    # Restart line controls the restart mode, meaning if the container stops running for any reason, it will restart the process immediately.
     ports:
       - "8000:80"
-      # The previous line defines the port that the WordPress container will use. After successful installation, the full path will look like this: http://localhost:8000
     env_file:
       - ${PWD}/.env/mariadb.env
+      - ${PWD}/.env/phpadmin.env
       - ${PWD}/.env/wordpress.env
 
-    # Similar to MySQL image variables, the last four lines define the main variables needed for the WordPress container to work properly with the MySQL container.
-    volumes: ["${PWD}/wordpress/:/var/www/html"]
-    networks:
-      - wpsite
+    volumes:
+      - ${PWD}/wordpress/:/var/www/html
 
-networks:
-  wpsite:
 volumes:
   db_data:
