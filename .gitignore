@@ -1,3 +1,4 @@
-/.env
-/wordpress
-/db_data
+.env/
+*.env
+wordpress/
+db_data/
